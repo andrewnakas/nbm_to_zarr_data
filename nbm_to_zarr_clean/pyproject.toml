@@ -1,0 +1,92 @@
+[project]
+name = "nbm-to-zarr"
+version = "0.1.0"
+description = "Reformatter for NOAA National Blend of Models (NBM) datasets into zarr"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "xarray>=2024.9.0",
+    "zarr>=2.18.3",
+    "numcodecs>=0.12.0",
+    "dask>=2024.9.0",
+    "numpy>=2.1.1",
+    "pandas>=2.2.2",
+    "rasterio>=1.3.10",
+    "rioxarray>=0.17.0",
+    "s3fs>=2024.9.0",
+    "pydantic>=2.9.1",
+    "typer>=0.12.5",
+    "rich>=13.8.1",
+    "requests>=2.32.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6.5",
+    "mypy>=1.11.2",
+    "pytest>=8.3.3",
+    "pre-commit>=3.8.0",
+]
+
+[project.scripts]
+nbm-zarr = "nbm_to_zarr.__main__:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "ANN",   # flake8-annotations
+    "ASYNC", # flake8-async
+    "S",     # flake8-bandit
+    "B",     # flake8-bugbear
+    "A",     # flake8-builtins
+    "COM",   # flake8-commas
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "T10",   # flake8-debugger
+    "EXE",   # flake8-executable
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "G",     # flake8-logging-format
+    "PIE",   # flake8-pie
+    "T20",   # flake8-print
+    "PT",    # flake8-pytest-style
+    "Q",     # flake8-quotes
+    "RSE",   # flake8-raise
+    "RET",   # flake8-return
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "TCH",   # flake8-type-checking
+    "ARG",   # flake8-unused-arguments
+    "PTH",   # flake8-use-pathlib
+    "ERA",   # eradicate
+    "PL",    # pylint
+    "TRY",   # tryceratops
+    "RUF",   # ruff-specific rules
+]
+ignore = [
+    "ANN101",  # missing-type-self
+    "ANN102",  # missing-type-cls
+    "COM812",  # missing-trailing-comma (conflicts with formatter)
+    "ISC001",  # single-line-implicit-string-concatenation (conflicts with formatter)
+]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

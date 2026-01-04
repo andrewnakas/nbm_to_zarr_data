@@ -1,0 +1,186 @@
+name: Update NBM Data
+
+on:
+  schedule:
+    # Run every hour at minute 15
+    - cron: '15 * * * *'
+  workflow_dispatch:  # Allow manual triggering
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: data-update
+  cancel-in-progress: false
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+
+    steps:
+      - name: Free up disk space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+
+          # Remove unnecessary pre-installed software
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+
+          # Clean package manager caches
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+
+          echo "=== Disk space after cleanup ==="
+          df -h
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1  # Shallow clone - only fetch latest commit
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Create necessary directories
+        run: |
+          mkdir -p data
+          mkdir -p catalog
+          mkdir -p data_summary
+
+      - name: Install package
+        run: |
+          uv pip install --system -e .
+
+      - name: Check and reset dimensions if needed
+        run: |
+          python scripts/check_and_reset_dimensions.py
+
+      - name: Run operational update
+        timeout-minutes: 60
+        run: |
+          set -e  # Exit on any error
+          nbm-zarr operational-update --dataset-id noaa-nbm-conus-forecast --output-dir ./data
+
+      - name: Verify Zarr store was created
+        run: |
+          if [ ! -f "data/noaa-nbm-conus-forecast.zarr/.zmetadata" ]; then
+            echo "ERROR: Zarr store metadata was not created!"
+            echo "Contents of data directory:"
+            ls -la data/
+            exit 1
+          fi
+
+          # Check that at least one variable has actual data chunks (not just .zarray/.zattrs)
+          # Variables should have chunk files like t2m/0.0.0.0 or similar
+          data_chunks=$(find data/noaa-nbm-conus-forecast.zarr/t2m -type f ! -name ".z*" 2>/dev/null | wc -l)
+          if [ "$data_chunks" -eq 0 ]; then
+            echo "ERROR: Zarr store structure exists but NO VARIABLE DATA was written!"
+            echo "This means the operational update failed to populate weather data."
+            echo ""
+            echo "Checking what files exist for t2m variable:"
+            ls -la data/noaa-nbm-conus-forecast.zarr/t2m/ || echo "t2m directory not found"
+            echo ""
+            echo "Checking for any data chunks in entire store:"
+            find data/noaa-nbm-conus-forecast.zarr -type f ! -name ".z*" | head -20
+            exit 1
+          fi
+
+          echo "✅ Zarr store created successfully with $data_chunks data chunk(s) for t2m variable"
+
+      - name: Generate catalog metadata
+        run: |
+          python scripts/generate_catalog.py
+
+      - name: Create summary document
+        run: |
+          python scripts/create_summary.py
+
+      - name: Keep only latest forecast run
+        run: |
+          python scripts/cleanup_old_forecasts.py
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push metadata changes only
+        run: |
+          # IMPORTANT: We do NOT commit data/ to prevent repository bloat
+          # Data files are in .gitignore and exist only in the runner's working directory
+          # Only catalog and summary (small metadata files) are version controlled
+          git add catalog/ data_summary/
+          if ! git diff --staged --quiet; then
+            git commit -m "Update NBM metadata - $(date -u +'%Y-%m-%d %H:%M UTC')"
+
+            # Retry push up to 3 times with pull --rebase if needed
+            for attempt in 1 2 3; do
+              if git push; then
+                echo "Successfully pushed on attempt $attempt"
+                break
+              elif [ $attempt -lt 3 ]; then
+                echo "Push failed on attempt $attempt, pulling and retrying..."
+                git pull --rebase origin $(git branch --show-current)
+              else
+                echo "Failed to push after 3 attempts"
+                exit 1
+              fi
+            done
+          else
+            echo "No metadata changes to commit"
+          fi
+
+      - name: Monitor final disk space
+        if: always()
+        run: |
+          echo "=== Final disk space usage ==="
+          df -h
+          echo "=== Repository size ==="
+          du -sh .git
+          echo "=== Data directory size ==="
+          du -sh data/ || echo "No data directory"
+
+      - name: Upload catalog for Pages deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-artifact
+          path: catalog/
+          retention-days: 1
+
+  deploy-catalog:
+    needs: update-data
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Download catalog artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: catalog-artifact
+          path: catalog
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './catalog'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

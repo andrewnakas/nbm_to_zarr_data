@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files - THIS IS CRITICAL TO PREVENT BLOAT
+data/
+*.zarr/
+*.grib2
+*.grb
+*.grb2
+*.idx
+*.tmp
+
+# Temporary files
+tmp/
+temp/
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
