@@ -1,0 +1,50 @@
+{
+  "sources": {
+    "noaa-nbm-conus-forecast": {
+      "driver": "zarr",
+      "args": {
+        "urlpath": "data/noaa-nbm-conus-forecast.zarr",
+        "consolidated": true
+      },
+      "description": "Hourly forecast data from the National Blend of Models (NBM) for the Continental United States (CONUS) on a 2.5 km Lambert Conformal grid",
+      "metadata": {
+        "title": "NOAA National Blend of Models (NBM) CONUS Forecast",
+        "provider": "NOAA/NWS/NCEP",
+        "model": "NBM",
+        "variant": "CONUS",
+        "version": "4.3",
+        "dimensions": {
+          "init_time": 1,
+          "lead_time": 52,
+          "y": 1597,
+          "x": 2345
+        },
+        "variables": [
+          "ceil",
+          "dlwrf",
+          "dpt2m",
+          "dswrf",
+          "gust",
+          "prate",
+          "rh2m",
+          "snow",
+          "sp",
+          "t2m",
+          "tcc",
+          "tmax",
+          "tmin",
+          "tp",
+          "u10m",
+          "u80m",
+          "v10m",
+          "v80m",
+          "vis"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "version": 1,
+    "description": "NBM forecast data in Zarr format"
+  }
+}
