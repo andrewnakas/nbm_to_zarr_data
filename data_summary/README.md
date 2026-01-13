@@ -1,6 +1,6 @@
 # NBM Data Summary
 
-Generated: 2026-01-13 14:53:17 UTC
+Generated: 2026-01-13 15:45:54 UTC
 
 ## Available Datasets
 
